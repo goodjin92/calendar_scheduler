@@ -40,8 +40,6 @@ void main() async {
     }
   }
 
-  print(await database.getCategoryColors());
-
   runApp(
     MaterialApp(
       theme: ThemeData(

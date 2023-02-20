@@ -2,8 +2,20 @@ import 'package:calendar_scheduler/component/custom_text_field.dart';
 import 'package:calendar_scheduler/const/colors.dart';
 import 'package:flutter/material.dart';
 
-class ScheduleBottomSheet extends StatelessWidget {
+class ScheduleBottomSheet extends StatefulWidget {
   const ScheduleBottomSheet({Key? key}) : super(key: key);
+
+  @override
+  State<ScheduleBottomSheet> createState() => _ScheduleBottomSheetState();
+}
+
+class _ScheduleBottomSheetState extends State<ScheduleBottomSheet> {
+  final GlobalKey<FormState> formKey = GlobalKey();
+
+  // null이 들어올 수 있는 이유? 처음에 아무 값도 안 넣었을때는 null이니까...
+  int? startTime;
+  int? endTime;
+  String? content;
 
   @override
   Widget build(BuildContext context) {
@@ -28,27 +40,77 @@ class ScheduleBottomSheet extends StatelessWidget {
                   right: 8.0,
                   top: 8.0,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Time(),
-                    SizedBox(height: 16.0),
-                    _Content(),
-                    SizedBox(height: 16.0),
-                    _ColorPicker(),
-                    SizedBox(height: 8.0),
-                    _SaveButton(),
-                  ],
+                // Form으로 감싸서 안에 있는 모든 것을 관리할 수 있음
+                child: Form(
+                  key: formKey,
+                  // 사용자가 글씨를 한글자 한글자 쓸때마다 검증을 진행함
+                  autovalidateMode: AutovalidateMode.always,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Time(
+                        onStartSaved: (String? val) {
+                          // val! 을 줘서 null 값이 들어올수도 있게 하는 이유는
+                          // 이미 validator에서 null이 들어오면 저장이 안되도록 설정했으니
+                          // 절대 null이 들어올수가 없기 때문에
+                          startTime = int.parse(val!);
+                        },
+                        onEndSaved: (String? val) {
+                          endTime = int.parse(val!);
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      _Content(
+                        onSaved: (String? val) {
+                          content = val;
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      _ColorPicker(),
+                      SizedBox(height: 8.0),
+                      _SaveButton(
+                        onPressed: onSavePressed,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )),
       ),
     );
   }
+
+  void onSavePressed() {
+    // formKey는 생성을 했는데, 위젯과 결합을 안 했을 때
+    if (formKey.currentState == null) {
+      return;
+    }
+    // validate가 실행되면 안에 있는 모든 validator가 실행되면서
+    // 모두 null이 되었을 때 (= 에러가 없을 때), true를 내보냄
+    // 그 중 하나라도 텍스트를 내보내면 (= 에러가 있을 때), false를 내보냄
+    if (formKey.currentState!.validate()) {
+      print('에러가 없습니다');
+      formKey.currentState!.save();
+
+      print('-------------------------');
+      print('startTime : $startTime');
+      print('endTime : $endTime');
+      print('content : $content');
+    } else {
+      print('에러가 있습니다.');
+    }
+  }
 }
 
 class _Time extends StatelessWidget {
-  const _Time({Key? key}) : super(key: key);
+  final FormFieldSetter<String> onStartSaved;
+  final FormFieldSetter<String> onEndSaved;
+
+  const _Time({
+    required this.onStartSaved,
+    required this.onEndSaved,
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -58,14 +120,13 @@ class _Time extends StatelessWidget {
           child: CustomTextField(
             label: '시작 시간',
             isTime: true,
+            onSaved: onStartSaved,
           ),
         ),
         SizedBox(width: 16.0),
         Expanded(
           child: CustomTextField(
-            label: '마감 시간',
-            isTime: true,
-          ),
+              label: '마감 시간', isTime: true, onSaved: onEndSaved),
         ),
       ],
     );
@@ -73,7 +134,12 @@ class _Time extends StatelessWidget {
 }
 
 class _Content extends StatelessWidget {
-  const _Content({Key? key}) : super(key: key);
+  final FormFieldSetter<String> onSaved;
+
+  const _Content({
+    required this.onSaved,
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +147,7 @@ class _Content extends StatelessWidget {
       child: CustomTextField(
         label: '내용',
         isTime: false,
+        onSaved: onSaved,
       ),
     );
   }
@@ -121,7 +188,12 @@ class _ColorPicker extends StatelessWidget {
 }
 
 class _SaveButton extends StatelessWidget {
-  const _SaveButton({Key? key}) : super(key: key);
+  final VoidCallback onPressed;
+
+  const _SaveButton({
+    required this.onPressed,
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +201,7 @@ class _SaveButton extends StatelessWidget {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: onPressed,
             style: ElevatedButton.styleFrom(
               backgroundColor: PRIMARY_COLOR,
             ),
